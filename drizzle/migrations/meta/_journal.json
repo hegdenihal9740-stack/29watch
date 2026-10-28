@@ -1,0 +1,55 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1792738754702,
+      "tag": "0000_bigb_store_schema",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792740000000,
+      "tag": "0001_server_validated_orders",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793016362217,
+      "tag": "20261026120602_product_image_gallery",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793078326128,
+      "tag": "20261027104500_product_catalog_role_permissions",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793083680000,
+      "tag": "20261027121800_manage_all_watch_prices",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793085900000,
+      "tag": "20261027125400_manual_upi_payment_review",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793088060000,
+      "tag": "20261027140100_remove_legacy_payment_intents",
+      "breakpoints": true
+    }
+  ]
+}
