@@ -1,14 +1,15 @@
 const APP_ORIGIN = "https://bigb.invalid";
 const DEFAULT_POST_AUTH_PATH = "/";
-const ACCOUNT_POST_AUTH_PATH = "/account";
-const PROFILE_POST_AUTH_PATH = "/auth?view=profile";
 const OAUTH_RETURN_STORAGE_KEY = "pf-auth-return-path";
 const LAST_VISITED_PATH_STORAGE_KEY = "pf-last-visited-path";
 const OAUTH_RETURN_MAX_AGE_MS = 15 * 60 * 1000;
 
 type KeyValueStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
-export function getSafeReturnPath(value: string | null | undefined, fallback = DEFAULT_POST_AUTH_PATH): string {
+export function getSafeReturnPath(
+  value: string | null | undefined,
+  fallback = DEFAULT_POST_AUTH_PATH,
+): string {
   if (
     !value ||
     !value.startsWith("/") ||
@@ -28,18 +29,23 @@ export function getSafeReturnPath(value: string | null | undefined, fallback = D
   }
 }
 
-export function getPostAuthPath(returnPath: string | null | undefined, profile = false): string {
-  const safeReturnPath = getSafeReturnPath(returnPath, DEFAULT_POST_AUTH_PATH);
-  if (profile && (safeReturnPath === DEFAULT_POST_AUTH_PATH || safeReturnPath === ACCOUNT_POST_AUTH_PATH)) {
-    return PROFILE_POST_AUTH_PATH;
-  }
-  return safeReturnPath;
+export function getPostAuthPath(returnPath: string | null | undefined): string {
+  return getSafeReturnPath(returnPath, DEFAULT_POST_AUTH_PATH);
+}
+
+export function isPasswordRecoveryCallbackUrl(url: URL): boolean {
+  const hash = new URLSearchParams(url.hash.slice(1));
+  return (
+    url.searchParams.get("type") === "recovery" ||
+    hash.get("type") === "recovery" ||
+    url.searchParams.get("recovery") === "1"
+  );
 }
 
 export function createAuthEntryPath(returnPath: string, profile = false): string {
   const auth = new URL("/auth", APP_ORIGIN);
   if (profile) auth.searchParams.set("view", "profile");
-  auth.searchParams.set("next", getSafeReturnPath(returnPath, DEFAULT_POST_AUTH_PATH));
+  auth.searchParams.set("next", getPostAuthPath(returnPath));
   return `${auth.pathname}${auth.search}`;
 }
 
@@ -103,20 +109,35 @@ export function consumeOAuthReturnPath(storage: KeyValueStorage, now = Date.now(
 export function saveBrowserOAuthReturnPath(returnPath: string, now = Date.now()): void {
   if (typeof window === "undefined") return;
   saveOAuthReturnPath(localStorage, returnPath, now);
-  try { saveOAuthReturnPath(sessionStorage, returnPath, now); } catch { /* Some mobile browsers restrict session storage. */ }
+  try {
+    saveOAuthReturnPath(sessionStorage, returnPath, now);
+  } catch {
+    /* Some mobile browsers restrict session storage. */
+  }
 }
 
 export function readBrowserOAuthReturnPath(now = Date.now()): string | null {
   if (typeof window === "undefined") return null;
-  return readOAuthReturnPath(localStorage, now) ?? (() => {
-    try { return readOAuthReturnPath(sessionStorage, now); } catch { return null; }
-  })();
+  return (
+    readOAuthReturnPath(localStorage, now) ??
+    (() => {
+      try {
+        return readOAuthReturnPath(sessionStorage, now);
+      } catch {
+        return null;
+      }
+    })()
+  );
 }
 
 export function consumeBrowserOAuthReturnPath(now = Date.now()): string | null {
   if (typeof window === "undefined") return null;
   const returnPath = readBrowserOAuthReturnPath(now);
   localStorage.removeItem(OAUTH_RETURN_STORAGE_KEY);
-  try { sessionStorage.removeItem(OAUTH_RETURN_STORAGE_KEY); } catch { /* Session storage is optional. */ }
+  try {
+    sessionStorage.removeItem(OAUTH_RETURN_STORAGE_KEY);
+  } catch {
+    /* Session storage is optional. */
+  }
   return returnPath;
 }

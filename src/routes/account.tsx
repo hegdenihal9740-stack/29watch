@@ -143,7 +143,7 @@ function AccountPage() {
               <button type="button" onClick={() => setTab("wishlist")}>
                 <Heart size={18} /> My wishlist <ChevronRight size={16} />
               </button>
-              <AuthLink profile>
+              <AuthLink profile={!!user}>
                 <UserRound size={18} /> Profile information <ChevronRight size={16} />
               </AuthLink>
               <Link to="/shipping-policy">

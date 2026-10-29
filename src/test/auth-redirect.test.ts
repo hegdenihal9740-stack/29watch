@@ -2,11 +2,15 @@ import { describe, expect, it } from "vitest";
 import {
   createAuthCallbackUrl,
   createAuthEntryPath,
+  consumeBrowserOAuthReturnPath,
   consumeOAuthReturnPath,
   getPostAuthPath,
   getSafeReturnPath,
+  isPasswordRecoveryCallbackUrl,
   readLastVisitedPath,
+  readBrowserOAuthReturnPath,
   readOAuthReturnPath,
+  saveBrowserOAuthReturnPath,
   saveLastVisitedPath,
   saveOAuthReturnPath,
 } from "@/lib/auth-redirect";
@@ -29,7 +33,7 @@ describe("auth redirect handling", () => {
     );
   });
 
-  it.each(["http://localhost:8081", "http://127.0.0.1:8081", "http://192.168.1.8:8081"])(
+  it.each(["http://localhost:8090", "http://127.0.0.1:8090", "http://192.168.1.14:8090"])(
     "keeps the selected watch in the auth callback on %s",
     (origin) => {
       expect(createAuthCallbackUrl(origin, "/shop/rosegold")).toBe(
@@ -45,8 +49,8 @@ describe("auth redirect handling", () => {
   });
 
   it("preserves the selected watch on a phone using the local network address", () => {
-    expect(createAuthCallbackUrl("http://192.168.1.7:8081", "/shop/gold")).toBe(
-      "http://192.168.1.7:8081/auth?next=%2Fshop%2Fgold",
+    expect(createAuthCallbackUrl("http://192.168.1.14:8090", "/shop/gold")).toBe(
+      "http://192.168.1.14:8090/auth?next=%2Fshop%2Fgold",
     );
   });
 
@@ -60,7 +64,7 @@ describe("auth redirect handling", () => {
     );
   });
 
-  it("returns users to the original screen and safely falls back to profile information", () => {
+  it("returns users to the original screen and safely falls back to home", () => {
     expect(getPostAuthPath("/shop/steel?variant=gold#reviews")).toBe(
       "/shop/steel?variant=gold#reviews",
     );
@@ -68,9 +72,18 @@ describe("auth redirect handling", () => {
     expect(getPostAuthPath("//example.com")).toBe("/");
   });
 
-  it("sends profile-management sign-ins to the profile editor", () => {
-    expect(getPostAuthPath("/account", true)).toBe("/auth?view=profile");
-    expect(getPostAuthPath("/shop/steel?variant=gold", true)).toBe("/shop/steel?variant=gold");
+  it.each([
+    ["https://shop.example/#access_token=token&type=recovery", true],
+    ["https://shop.example/reset-password?token_hash=token&type=recovery", true],
+    ["https://shop.example/reset-password?recovery=1", true],
+    ["https://shop.example/?next=%2Faccount", false],
+  ])("recognizes password recovery callbacks (%s)", (input, expected) => {
+    expect(isPasswordRecoveryCallbackUrl(new URL(input))).toBe(expected);
+  });
+
+  it("returns profile-link sign-ins to their original page instead of the profile editor", () => {
+    expect(getPostAuthPath("/account")).toBe("/account");
+    expect(getPostAuthPath("/shop/steel?variant=gold")).toBe("/shop/steel?variant=gold");
   });
 
   it("persists return destinations in auth entry and callback URLs", () => {
@@ -98,6 +111,16 @@ describe("auth redirect handling", () => {
     expect(readOAuthReturnPath(storage, 2000)).toBe("/checkout?item=steel");
     expect(consumeOAuthReturnPath(storage, 2000)).toBe("/checkout?item=steel");
     expect(consumeOAuthReturnPath(storage, 2000)).toBeNull();
+  });
+
+  it("persists and consumes the OAuth destination across browser storage areas", () => {
+    localStorage.clear();
+    sessionStorage.clear();
+    saveBrowserOAuthReturnPath("/shop/steel?variant=42");
+
+    expect(readBrowserOAuthReturnPath()).toBe("/shop/steel?variant=42");
+    expect(consumeBrowserOAuthReturnPath()).toBe("/shop/steel?variant=42");
+    expect(readBrowserOAuthReturnPath()).toBeNull();
   });
 
   it("remembers the last visited screen but never remembers auth or reset pages", () => {

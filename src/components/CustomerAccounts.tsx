@@ -4,7 +4,11 @@ import { useLocation, useRouter } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase-config";
-import { consumeOAuthReturnPath, saveLastVisitedPath } from "@/lib/auth-redirect";
+import {
+  consumeBrowserOAuthReturnPath,
+  isPasswordRecoveryCallbackUrl,
+  saveLastVisitedPath,
+} from "@/lib/auth-redirect";
 
 const CustomerContext = createContext<{ user: User | null; ready: boolean; error: string | null }>({
   user: null,
@@ -31,6 +35,14 @@ export function CustomerAccounts({ children }: { children: ReactNode }) {
       setError("Account services are unavailable until Supabase is configured.");
       return;
     }
+    const callbackUrl = new URL(window.location.href);
+    const isRecoveryCallback = isPasswordRecoveryCallbackUrl(callbackUrl);
+    if (window.location.pathname !== "/reset-password" && isRecoveryCallback) {
+      window.location.replace(`/reset-password${callbackUrl.search}${callbackUrl.hash}`);
+      return () => {
+        active = false;
+      };
+    }
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
@@ -40,12 +52,19 @@ export function CustomerAccounts({ children }: { children: ReactNode }) {
         setReady(true);
         setError(null);
       }
+      if (event === "PASSWORD_RECOVERY" && window.location.pathname !== "/reset-password") {
+        window.location.replace("/reset-password?recovery=1");
+        return;
+      }
       if (event === "SIGNED_IN" && session?.user) {
         // The auth route must consume its own saved destination after user state
         // updates; otherwise its effect can fall back to profile after this handler
         // has already consumed the watch return path.
-        if (window.location.pathname !== "/auth") {
-          const returnPath = consumeOAuthReturnPath(localStorage);
+        if (
+          window.location.pathname !== "/auth" &&
+          window.location.pathname !== "/reset-password"
+        ) {
+          const returnPath = consumeBrowserOAuthReturnPath();
           if (returnPath) {
             const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
             if (returnPath !== currentPath) window.location.replace(returnPath);
@@ -87,8 +106,12 @@ export function CustomerAccounts({ children }: { children: ReactNode }) {
         }
         setUser(data.user);
         setReady(true);
-        if (window.location.pathname !== "/auth") {
-          const returnPath = consumeOAuthReturnPath(localStorage);
+        if (
+          window.location.pathname !== "/auth" &&
+          window.location.pathname !== "/reset-password" &&
+          !callbackUrl.searchParams.has("code")
+        ) {
+          const returnPath = consumeBrowserOAuthReturnPath();
           if (returnPath) {
             const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
             if (returnPath !== currentPath) window.location.replace(returnPath);

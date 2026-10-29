@@ -54,12 +54,12 @@ function AuthPage() {
     setSavedReturnPath(readBrowserOAuthReturnPath() ?? readLastVisitedPath(localStorage));
     setReturnPathReady(true);
   }, [callbackPath]);
-  const returnPath = getPostAuthPath(callbackPath ?? savedReturnPath, view === "profile");
+  const returnPath = getPostAuthPath(callbackPath ?? savedReturnPath);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const callbackError = params.get("error_description") ?? params.get("error");
     if (callbackError) {
-      consumeOAuthReturnPath(localStorage);
+      consumeBrowserOAuthReturnPath();
       setError(
         /missing OAuth secret|unsupported provider/i.test(callbackError)
           ? "Google sign-in is not enabled for this store yet. Please use email and password, or contact support."
@@ -70,6 +70,7 @@ function AuthPage() {
     if (!user || !returnPathReady) return;
     consumeBrowserOAuthReturnPath();
     if (
+      view !== "profile" &&
       returnPath !== `${window.location.pathname}${window.location.search}${window.location.hash}`
     ) {
       window.location.replace(returnPath);
@@ -88,7 +89,7 @@ function AuthPage() {
         () =>
           setError("Your profile could not be loaded. Please check your connection and try again."),
       );
-  }, [user, returnPath, returnPathReady]);
+  }, [user, returnPath, returnPathReady, view]);
   const changeMode = (next: typeof mode) => {
     setMode(next);
     setMessage("");
@@ -164,7 +165,7 @@ function AuthPage() {
     setError("");
     setBusy(true);
     try {
-      saveOAuthReturnPath(localStorage, returnPath);
+      saveBrowserOAuthReturnPath(returnPath);
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
@@ -176,7 +177,7 @@ function AuthPage() {
       if (!data.url) throw new Error("Supabase did not provide a Google sign-in URL.");
       window.location.assign(data.url);
     } catch (error) {
-      consumeOAuthReturnPath(localStorage);
+      consumeBrowserOAuthReturnPath();
       const detail = error instanceof Error ? error.message : "";
       setError(
         /missing OAuth secret|unsupported provider|provider.*not enabled|google.*not enabled/i.test(

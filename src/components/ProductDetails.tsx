@@ -73,7 +73,7 @@ const extra: Record<WatchTone, string[]> = {
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { cart, prices } from "@/lib/cart";
 import { watches, type WatchTone } from "@/lib/watches";
-import { createAuthEntryPath, saveOAuthReturnPath } from "@/lib/auth-redirect";
+import { createAuthEntryPath, saveBrowserOAuthReturnPath } from "@/lib/auth-redirect";
 
 const usd = (n: number) => n.toLocaleString("en-IN");
 const isCaseSizeSpec = (spec: string) =>
@@ -203,7 +203,7 @@ export function ProductDetails({
     if (!customer) {
       toast.info("Please log in to continue with your purchase");
       const returnPath = `/shop/${encodeURIComponent(w.id)}`;
-      saveOAuthReturnPath(localStorage, returnPath);
+      saveBrowserOAuthReturnPath(returnPath);
       window.location.assign(createAuthEntryPath(returnPath));
       return;
     }
